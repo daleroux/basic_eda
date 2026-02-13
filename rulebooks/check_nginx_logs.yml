@@ -1,0 +1,27 @@
+---
+- name: Listen for Nginx Log Events
+  hosts: all
+  sources:
+    - ansible.eda.pg_listener:
+        dsn: "{{ EDA_PG_DSN }}"
+        channels:
+          - "{{ EDA_CHANNEL }}"
+
+  rules:
+    - name: Restart Nginx on critical error
+      condition: >
+        event.payload.message is defined and
+        event.payload.message is search("upstream timed out", ignorecase=true)
+      action:
+        run_job_template:
+          name: "Restart Nginx"
+          organization: "Default"
+
+    - name: Log all other events
+      condition: >
+        event.payload.message is defined and
+        event.payload.message is not search("upstream timed out", ignorecase=true)
+      action:
+        debug:
+          msg: "Received log event: {{ event.payload.message }}"
+...
