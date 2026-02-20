@@ -1,0 +1,35 @@
+---
+- name: Deploy EDA Event Forwarder Script
+  hosts: all
+  become: true
+  vars:
+    # Default path for the script on the target machine
+    script_dest: "/usr/local/bin/eda_event_forwarder.sh"
+
+  pre_tasks:
+    - name: Verify that required Extra Variables are provided
+      assert:
+        that:
+          - rhel9_hostname is defined
+          - EDA_UUID is defined
+        fail_msg: "Please provide 'rhel9_hostname' and 'EDA_UUID' as Extra Vars in the Job Template."
+        success_msg: "All required variables are present. Proceeding with deployment."
+
+  tasks:
+    - name: Generate the bash script from Jinja2 template
+      template:
+        src: eda_event_forwarder.sh.j2
+        dest: "{{ script_dest }}"
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Confirm script deployment
+      stat:
+        path: "{{ script_dest }}"
+      register: script_stat
+
+    - name: Report success
+      debug:
+        msg: "EDA Forwarder script successfully deployed to {{ script_dest }} pointing to {{ rhel9_hostname }}"
+      when: script_stat.stat.exists
