@@ -1,0 +1,46 @@
+---
+- name: Configure Rsyslog for EDA Integration
+  hosts: all
+  become: true
+  tasks:
+    - name: Create rsyslog configuration for Nginx to EDA
+      copy:
+        dest: /etc/rsyslog.d/10-nginx-eda.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          module(load="imfile")
+          module(load="omprog")
+
+          input(type="imfile"
+            File="/var/log/nginx/error.log"
+            Tag="nginx-error:"
+            Severity="error"
+            Facility="local6"
+            reopenOnTruncate="on"
+          )
+
+          template(name="eda-json" type="string"
+            string="{\"message\":\"%msg:::json%\",\"hostname\":\"%hostname%\",\"source\":\"nginx-error-log\"}\n"
+          )
+
+          if $msg contains "upstream timed out" then {
+            action(type="omprog"
+              binary="/usr/local/bin/eda-forward.sh"
+              template="eda-json"
+              useTransactions="off"
+              confirmMessages="off"
+            )
+          }
+
+    - name: Verify rsyslog configuration syntax
+      command: rsyslogd -N1
+      register: rsyslog_check
+      changed_when: false
+
+    - name: Restart rsyslog to apply changes
+      service:
+        name: rsyslog
+        state: restarted
+      when: rsyslog_check.rc == 0
