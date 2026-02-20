@@ -27,7 +27,7 @@
 
           if $msg contains "upstream timed out" then {
             action(type="omprog"
-              binary="/usr/local/bin/eda-forward.sh"
+              binary="/usr/local/bin/eda_event_forwarder.sh"
               template="eda-json"
               useTransactions="off"
               confirmMessages="off"
