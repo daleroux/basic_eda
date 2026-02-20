@@ -1,0 +1,23 @@
+---
+- name: Test Nginx to EDA Logging Pipeline
+  hosts: all
+  become: true
+  tasks:
+    - name: Inject simulated "upstream timeout" error into Nginx log
+      lineinfile:
+        path: /var/log/nginx/error.log
+        line: '[error] upstream timed out (110: Connection timed out) while reading response header from upstream'
+        create: yes
+
+    - name: Wait for rsyslog to process the event
+      pause:
+        seconds: 15
+
+    - name: Retrieve rsyslog journal entries to verify execution
+      command: journalctl -u rsyslog --since "1 minute ago" --no-pager
+      register: rsyslog_logs
+      changed_when: false
+
+    - name: Display rsyslog logs for verification
+      debug:
+        var: rsyslog_logs.stdout_lines
