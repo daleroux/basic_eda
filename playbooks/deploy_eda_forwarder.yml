@@ -10,8 +10,8 @@
       assert:
         that:
           - aap_fqdn is defined
-          - EDA_UUID is defined
-        fail_msg: "Please provide 'aap_fqdn' and 'EDA_UUID' as Extra Vars in the Job Template."
+          - eda_UUID is defined
+        fail_msg: "Please provide 'aap_fqdn' and 'eda_UUID' as Extra Vars in the Job Template."
         success_msg: "All required variables are present. Proceeding with deployment."
 
   tasks:
