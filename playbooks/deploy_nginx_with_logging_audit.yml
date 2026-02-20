@@ -1,0 +1,38 @@
+---
+- name: Install Nginx and Validate Logging Components
+  hosts: all
+  become: true
+  tasks:
+    - name: Ensure Nginx is installed
+      dnf:
+        name: nginx
+        state: present
+
+    - name: Verify rsyslog package is installed
+      package_facts:
+        manager: auto
+
+    - name: Check if rsyslog is in the package list
+      assert:
+        that:
+          - "'rsyslog' in ansible_facts.packages"
+        fail_msg: "rsyslog is not installed on the system."
+        success_msg: "rsyslog version {{ ansible_facts.packages['rsyslog'][0].version }} is present."
+
+    - name: Validate the existence of the omprog.so module
+      stat:
+        path: /usr/lib64/rsyslog/omprog.so
+      register: omprog_check
+
+    - name: Assert omprog.so exists
+      assert:
+        that:
+          - omprog_check.stat.exists
+        fail_msg: "Required rsyslog module omprog.so was not found in /usr/lib64/rsyslog/"
+        success_msg: "Validation successful: omprog.so is present."
+
+    - name: Start and enable Nginx service
+      service:
+        name: nginx
+        state: started
+        enabled: true
