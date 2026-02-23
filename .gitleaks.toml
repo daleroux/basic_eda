@@ -1,0 +1,7 @@
+[allowlist]
+  description = "Workshop/lab false positive allowlist"
+
+  # Ignore the fake Basic Auth placeholder used in workshop templates
+  regexes = [
+    '''dXNlcm5hbWU6cGFzc3dvcmQ=''',
+  ]
