@@ -3,8 +3,10 @@
   hosts: all
   become: true
   tasks:
-    - name: Inject simulated "upstream timeout" error into Nginx log
-      shell: echo '[error] upstream timed out (110: Connection timed out) while reading response header from upstream' >> /var/log/nginx/error.log
+    - name: Inject simulated upstream timeout error into Nginx log
+      shell: >
+        echo "[error] upstream timed out (110: Connection timed out) while reading response header from upstream"
+        >> /var/log/nginx/error.log
 
     - name: Wait for rsyslog to process the event
       pause:
