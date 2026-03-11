@@ -1,0 +1,28 @@
+---
+- name: Deploy EDA Event Forwarder Script
+  hosts: all
+  become: true
+  vars:
+    script_dest: "/usr/local/bin/eda_event_forwarder.sh"
+
+  pre_tasks:
+    - name: Verify that required Extra Variables are provided
+      assert:
+        that:
+          - aap_fqdn is defined
+          - eda_UUID is defined
+        fail_msg: "Please provide 'aap_fqdn' and 'eda_UUID' as Extra Vars in the Job Template."
+        success_msg: "All required variables are present. Proceeding with deployment."
+
+  tasks:
+    - name: Generate the bash script from Jinja2 template
+      template:
+        src: eda_event_forwarder.sh.j2
+        dest: "{{ script_dest }}"
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Report success
+      debug:
+        msg: "EDA Forwarder script successfully deployed to {{ script_dest }} pointing to {{ aap_fqdn }}"

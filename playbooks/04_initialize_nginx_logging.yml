@@ -1,0 +1,46 @@
+---
+- name: Initialize Nginx Logs and Restart Rsyslog
+  hosts: all
+  become: true
+  tasks:
+    - name: Ensure Nginx log directory exists
+      file:
+        path: /var/log/nginx
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Ensure Nginx error.log exists
+      file:
+        path: /var/log/nginx/error.log
+        state: touch
+        owner: root
+        group: root
+        mode: '0644'
+        modification_time: preserve
+        access_time: preserve
+
+    - name: Validate rsyslog configuration syntax
+      command: rsyslogd -N1
+      register: rsyslog_verify
+      changed_when: false
+      failed_when: rsyslog_verify.rc != 0
+
+    - name: Show rsyslog validation output
+      debug:
+        var: rsyslog_verify.stdout_lines
+
+    - name: Restart rsyslog service
+      service:
+        name: rsyslog
+        state: restarted
+
+    - name: Capture rsyslog service status
+      command: systemctl status rsyslog
+      register: rsyslog_status
+      changed_when: false
+
+    - name: Display rsyslog status
+      debug:
+        var: rsyslog_status.stdout_lines

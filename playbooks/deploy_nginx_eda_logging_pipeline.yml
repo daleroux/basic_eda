@@ -1,0 +1,197 @@
+---
+# =============================================================================
+# Consolidated Playbook: Nginx + EDA Logging Pipeline
+# =============================================================================
+# Execution order:
+#   01 - Install Nginx and validate logging components
+#   02 - Deploy EDA event forwarder script
+#   03 - Configure rsyslog for EDA integration
+#   04 - Initialize Nginx logs and restart rsyslog
+#   05 - Test the Nginx to EDA logging pipeline
+# =============================================================================
+
+- name: Nginx EDA Logging Pipeline - Full Deployment
+  hosts: all
+  become: true
+  vars:
+    script_dest: "/usr/local/bin/eda_event_forwarder.sh"
+
+  pre_tasks:
+    # -------------------------------------------------------------------------
+    # From 02 - Verify required extra variables are provided before doing anything
+    # -------------------------------------------------------------------------
+    - name: Verify that required Extra Variables are provided
+      assert:
+        that:
+          - aap_fqdn is defined
+          - eda_UUID is defined
+        fail_msg: "Please provide 'aap_fqdn' and 'eda_UUID' as Extra Vars in the Job Template."
+        success_msg: "All required variables are present. Proceeding with deployment."
+
+  tasks:
+
+    # =========================================================================
+    # PHASE 1 - Install Nginx and validate logging components (01)
+    # =========================================================================
+
+    - name: "[01] Ensure Nginx is installed"
+      dnf:
+        name: nginx
+        state: present
+
+    - name: "[01] Verify rsyslog package is installed"
+      package_facts:
+        manager: auto
+
+    - name: "[01] Check if rsyslog is in the package list"
+      assert:
+        that:
+          - "'rsyslog' in ansible_facts.packages"
+        fail_msg: "rsyslog is not installed on the system."
+        success_msg: "rsyslog version {{ ansible_facts.packages['rsyslog'][0].version }} is present."
+
+    - name: "[01] Validate the existence of the omprog.so module"
+      stat:
+        path: /usr/lib64/rsyslog/omprog.so
+      register: omprog_check
+
+    - name: "[01] Assert omprog.so exists"
+      assert:
+        that:
+          - omprog_check.stat.exists
+        fail_msg: "Required rsyslog module omprog.so was not found in /usr/lib64/rsyslog/"
+        success_msg: "Validation successful: omprog.so is present."
+
+    - name: "[01] Start and enable Nginx service"
+      service:
+        name: nginx
+        state: started
+        enabled: true
+
+    # =========================================================================
+    # PHASE 2 - Deploy EDA event forwarder script (02)
+    # =========================================================================
+
+    - name: "[02] Generate the bash script from Jinja2 template"
+      template:
+        src: eda_event_forwarder.sh.j2
+        dest: "{{ script_dest }}"
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: "[02] Report EDA forwarder deployment success"
+      debug:
+        msg: "EDA Forwarder script successfully deployed to {{ script_dest }} pointing to {{ aap_fqdn }}"
+
+    # =========================================================================
+    # PHASE 3 - Configure rsyslog for EDA integration (03)
+    # =========================================================================
+
+    - name: "[03] Create rsyslog configuration for Nginx to EDA"
+      copy:
+        dest: /etc/rsyslog.d/10-nginx-eda.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          module(load="imfile")
+          module(load="omprog")
+
+          input(type="imfile"
+            File="/var/log/nginx/error.log"
+            Tag="nginx-error:"
+            Severity="error"
+            Facility="local6"
+            reopenOnTruncate="on"
+          )
+
+          template(name="eda-json" type="string"
+            string="{\"message\":\"%msg:::json%\",\"hostname\":\"%hostname%\",\"source\":\"nginx-error-log\"}\n"
+          )
+
+          if $msg contains "upstream timed out" then {
+            action(type="omprog"
+              binary="/usr/local/bin/eda_event_forwarder.sh"
+              template="eda-json"
+              useTransactions="off"
+              confirmMessages="off"
+            )
+          }
+
+    - name: "[03] Verify rsyslog configuration syntax"
+      command: rsyslogd -N1
+      register: rsyslog_check
+      changed_when: false
+
+    - name: "[03] Restart rsyslog to apply changes"
+      service:
+        name: rsyslog
+        state: restarted
+      when: rsyslog_check.rc == 0
+
+    # =========================================================================
+    # PHASE 4 - Initialize Nginx logs and restart rsyslog (04)
+    # =========================================================================
+
+    - name: "[04] Ensure Nginx log directory exists"
+      file:
+        path: /var/log/nginx
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: "[04] Ensure Nginx error.log exists"
+      file:
+        path: /var/log/nginx/error.log
+        state: touch
+        owner: root
+        group: root
+        mode: '0644'
+        modification_time: preserve
+        access_time: preserve
+
+    - name: "[04] Validate rsyslog configuration syntax"
+      command: rsyslogd -N1
+      register: rsyslog_verify
+      changed_when: false
+      failed_when: rsyslog_verify.rc != 0
+
+    - name: "[04] Show rsyslog validation output"
+      debug:
+        var: rsyslog_verify.stdout_lines
+
+    - name: "[04] Restart rsyslog service"
+      service:
+        name: rsyslog
+        state: restarted
+
+    - name: "[04] Capture rsyslog service status"
+      command: systemctl status rsyslog
+      register: rsyslog_status
+      changed_when: false
+
+    - name: "[04] Display rsyslog status"
+      debug:
+        var: rsyslog_status.stdout_lines
+
+    # =========================================================================
+    # PHASE 5 - Test the Nginx to EDA logging pipeline (05)
+    # =========================================================================
+
+    - name: "[05] Inject simulated 'upstream timeout' error into Nginx log"
+      shell: echo '[error] upstream timed out (110: Connection timed out) while reading response header from upstream' >> /var/log/nginx/error.log
+
+    - name: "[05] Wait for rsyslog to process the event"
+      pause:
+        seconds: 15
+
+    - name: "[05] Retrieve rsyslog journal entries to verify execution"
+      command: journalctl -u rsyslog --since "1 minute ago" --no-pager
+      register: rsyslog_logs
+      changed_when: false
+
+    - name: "[05] Display rsyslog logs for verification"
+      debug:
+        var: rsyslog_logs.stdout_lines
