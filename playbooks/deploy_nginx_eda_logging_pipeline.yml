@@ -151,6 +151,18 @@
         name: rsyslog
         state: stopped
 
+    - name: "[04] Clear rsyslog imfile state files to prevent duplicate events"
+      find:
+        paths: /var/lib/rsyslog
+        patterns: "imfile-state*"
+      register: imfile_state_files
+
+    - name: "[04] Delete rsyslog imfile state files"
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ imfile_state_files.files }}"
+
     - name: "[04] Ensure Nginx log directory exists"
       file:
         path: /var/log/nginx
