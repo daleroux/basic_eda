@@ -7,7 +7,7 @@
 #   02 - Deploy EDA event forwarder script
 #   03 - Configure rsyslog for EDA integration
 #   04 - Initialize Nginx logs and restart rsyslog
-#   05 - Test the Nginx to EDA logging pipeline
+#   05 - Test the Nginx to EDA logging pipeline (separate playbook)
 # =============================================================================
 
 - name: Nginx EDA Logging Pipeline - Full Deployment
@@ -214,25 +214,3 @@
     - name: "[04] Display rsyslog status"
       debug:
         var: rsyslog_status.stdout_lines
-
-    # =========================================================================
-    # PHASE 5 - Test the Nginx to EDA logging pipeline (05)
-    # =========================================================================
-
-    - name: "[05] Inject simulated upstream timeout error into Nginx log"
-      shell: >
-        echo "[error] upstream timed out (110: Connection timed out) while reading response header from upstream"
-        >> /var/log/nginx/error.log
-
-    - name: "[05] Wait for rsyslog to process the event"
-      pause:
-        seconds: 15
-
-    - name: "[05] Retrieve rsyslog journal entries to verify execution"
-      command: journalctl -u rsyslog --since "1 minute ago" --no-pager
-      register: rsyslog_logs
-      changed_when: false
-
-    - name: "[05] Display rsyslog logs for verification"
-      debug:
-        var: rsyslog_logs.stdout_lines
