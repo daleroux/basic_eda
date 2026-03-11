@@ -151,7 +151,15 @@
         name: rsyslog
         state: stopped
 
-    - name: "[04] Clear rsyslog imfile state files to prevent duplicate events"
+    - name: "[04] Truncate Nginx error.log to ensure a clean slate"
+      copy:
+        content: ""
+        dest: /var/log/nginx/error.log
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: "[04] Clear rsyslog imfile state files to prevent re-processing old content"
       find:
         paths: /var/lib/rsyslog
         patterns: "imfile-state*"
