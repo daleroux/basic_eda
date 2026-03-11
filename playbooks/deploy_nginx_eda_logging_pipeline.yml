@@ -180,8 +180,10 @@
     # PHASE 5 - Test the Nginx to EDA logging pipeline (05)
     # =========================================================================
 
-    - name: "[05] Inject simulated 'upstream timeout' error into Nginx log"
-      shell: echo '[error] upstream timed out (110: Connection timed out) while reading response header from upstream' >> /var/log/nginx/error.log
+    - name: "[05] Inject simulated upstream timeout error into Nginx log"
+      shell: >
+        echo "[error] upstream timed out (110: Connection timed out) while reading response header from upstream"
+        >> /var/log/nginx/error.log
 
     - name: "[05] Wait for rsyslog to process the event"
       pause:
