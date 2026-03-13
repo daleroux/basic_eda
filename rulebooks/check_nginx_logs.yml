@@ -1,11 +1,11 @@
 ---
 - name: Listen for Nginx Log Events
-  hosts: all
+  hosts: localhost
   sources:
-    - ansible.eda.pg_listener:
-        dsn: "{{ EDA_PG_DSN }}"
-        channels:
-          - "{{ EDA_CHANNEL }}"
+    - name: listen for alerts
+      ansible.eda.webhook:
+        host: 0.0.0.0
+        port: 5005
 
   rules:
     - name: Restart Nginx on critical error
@@ -14,8 +14,8 @@
         event.payload.message is search("upstream timed out", ignorecase=true)
       action:
         run_job_template:
-          name: "Restart Nginx"
-          organization: "Default"
+          name: "dleroux_deploy_nginx_eda_logging_pipeline"
+          organization: "dleroux"
 
     - name: Log all other events
       condition: >
