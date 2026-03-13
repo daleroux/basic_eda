@@ -1,6 +1,6 @@
 ---
 - name: Restart Nginx Service
-  hosts: linux
+  hosts: all
   become: true
   gather_facts: false
   tasks:
