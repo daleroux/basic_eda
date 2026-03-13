@@ -14,7 +14,7 @@
         event.payload.message is search("upstream timed out", ignorecase=true)
       action:
         run_job_template:
-          name: "dleroux_deploy_nginx_eda_logging_pipeline"
+          name: "nginx_restart"
           organization: "dleroux"
 
     - name: Log all other events
