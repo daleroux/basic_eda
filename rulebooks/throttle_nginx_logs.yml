@@ -19,7 +19,7 @@
       action:
         run_job_template:
           name: "nginx_restart"
-          organization: "dleroux"
+          organization: "{{ target_organization }}"
 
     - name: Log all other events
       condition: >
