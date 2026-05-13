@@ -7,21 +7,21 @@
         host: 0.0.0.0
         port: 5005
 
-  rules:
-    - name: Restart Nginx on critical error
-      condition: >
-        event.payload.message is defined and
-        event.payload.message is search("upstream timed out", ignorecase=true)
-      action:
-        run_job_template:
-          name: "nginx_restart"
-          organization: "{{ organization }}"
-
-    - name: Log all other events
-      condition: >
-        event.payload.message is defined and
-        event.payload.message is not search("upstream timed out", ignorecase=true)
-      action:
-        debug:
-          msg: "Received log event: {{ event.payload.message }}"
+rules:
+  - name: Restart Nginx on critical error
+    condition: >
+      event.payload.message is defined and
+      event.payload.message is search("upstream timed out", ignorecase=true)
+    action:
+      run_job_template:
+        name: "nginx_restart"
+        organization: "{{ target_organization }}"
+  - name: Log all other events
+    condition: >
+      event.payload.message is defined and
+      event.payload.message is not search("upstream timed out", ignorecase=true)
+    action:
+      debug:
+        msg: "Received log event: {{ event.payload.message }}"
 ...
+[
