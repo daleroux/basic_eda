@@ -8,11 +8,6 @@
         port: 5005
   rules:
     - name: Print any payload received
-      condition: event.payload.alert_type is defined
-      throttle:
-        once_within: 5 seconds
-        group_by_attributes:
-          - event.payload.alert_type
+      condition: event.payload is defined
       action:
         debug:
-          msg: "Received alert: type={{ event.payload.alert_type }}, source={{ event.payload.source | default('unknown') }}"
