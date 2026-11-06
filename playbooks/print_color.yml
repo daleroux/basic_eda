@@ -1,0 +1,6 @@
+- name: Print Color
+  hosts: all
+  tasks:
+    - name: Print color selected
+      ansible.builtin.debug:
+        msg: "The selected color is {{ color }}"
